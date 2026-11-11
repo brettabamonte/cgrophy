@@ -1,0 +1,22 @@
+[project]
+name = "cgrophy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Brett Abamonte", email = "abamonteb@gmail.com" }
+]
+requires-python = ">=3.14"
+
+[dependency-groups]
+build = [
+	"setuptools"
+]
+
+
+[project.scripts]
+cgrophy-py = "cgrophy_py:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

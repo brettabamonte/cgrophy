@@ -1,1 +1,6 @@
 bin/
+**/lib/
+**.swp
+**.egg-info
+**.pyd
+**/.env

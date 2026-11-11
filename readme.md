@@ -20,3 +20,9 @@
 	- [ ] c lib
 	- [ ] python package test suite
 	- [ ] python package
+
+## abi support
+
+- [ ] Windows AMD64
+	- in progress
+- [ ] System V AMD64
