@@ -1,7 +1,7 @@
 [project]
 name = "cgrophy"
 version = "0.1.0"
-description = "Add your description here"
+description = "Cryptographic library"
 readme = "README.md"
 authors = [
     { name = "Brett Abamonte", email = "abamonteb@gmail.com" }
@@ -12,11 +12,17 @@ requires-python = ">=3.14"
 build = [
 	"setuptools"
 ]
-
-
-[project.scripts]
-cgrophy-py = "cgrophy_py:main"
+test = [
+    "pytest"
+]
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.cgrophy]
+includes = ["include/"]
+libs = ["lib/"]

@@ -21,6 +21,8 @@
 	- [ ] python package test suite
 	- [ ] python package
 
+- [ ] detect endianess of system. relying on default values assuming system is little-endian.
+
 ## abi support
 
 - [ ] Windows AMD64

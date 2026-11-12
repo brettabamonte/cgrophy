@@ -4,3 +4,9 @@ bin/
 **.egg-info
 **.pyd
 **/.env
+**/*.dll
+**/*.lib
+**/build
+**/.venv
+**/.pytest_cache
+**/__pycache__

@@ -3,8 +3,14 @@
 */
 
 #include "sha1.h"
+#include "types.h"
 
 #include <assert.h>
+#include <stdlib.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+    #include <malloc.h>
+#endif
 
 #ifdef SHA1_TEST
 #include <string.h>
@@ -39,6 +45,19 @@ typedef struct Sha1Ctx{
 }Sha1Ctx;
 
 /* public api implementation */
+
+Sha1Ctx *sha1_new(void)
+{
+    Sha1Ctx *new;
+    new = (Sha1Ctx*)malloc(sizeof(Sha1Ctx));
+
+    if (new == NULL)
+    {
+        return NULL;
+    }
+
+    return new;
+}
 
 void sha1_init(Sha1Ctx *ctx)
 {
@@ -105,6 +124,12 @@ void sha1_final(Sha1Ctx *ctx, u8 *digest)
 	
 	/* wipe ctx vars */
 	memset(ctx, '\0', sizeof(*ctx));
+}
+
+void sha1_destroy(Sha1Ctx *ctx)
+{
+    assert(ctx);
+    free(ctx);
 }
 
 /* internals */
