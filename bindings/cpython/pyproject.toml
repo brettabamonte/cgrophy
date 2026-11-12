@@ -20,6 +20,11 @@ test = [
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[pytest]
+testpaths = [
+    "tests"
+]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
