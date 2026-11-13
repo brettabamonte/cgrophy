@@ -1,10 +1,10 @@
 ## todo
 
-- [ ] sha1
+- [x] sha1
 	- [x] c lib test suite
 	- [x] c lib
 	- [x] python package test suite
-	- [ ] python package
+	- [x] python package
 - [ ] sha256
 	- [ ] c lib test suite
 	- [ ] c lib
