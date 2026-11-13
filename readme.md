@@ -3,7 +3,7 @@
 - [ ] sha1
 	- [x] c lib test suite
 	- [x] c lib
-	- [ ] python package test suite
+	- [x] python package test suite
 	- [ ] python package
 - [ ] sha256
 	- [ ] c lib test suite
@@ -22,6 +22,7 @@
 	- [ ] python package
 
 - [ ] detect endianess of system. relying on default values assuming system is little-endian.
+- [ ] Implement ACVP Secure Hash Algorithm (SHA) JSON Specification
 
 ## abi support
 

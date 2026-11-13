@@ -10,3 +10,4 @@ bin/
 **/.venv
 **/.pytest_cache
 **/__pycache__
+**/.vs

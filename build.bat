@@ -42,7 +42,6 @@ set "arguments=/Wall /wd4711 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\"
 if "%tests%"=="true" (
     set "arguments=%arguments% /DSHA1_TEST"
 )
-echo %arguments%
 
 if "%conf%"=="release" (
     set "arguments=%arguments% /O2"
