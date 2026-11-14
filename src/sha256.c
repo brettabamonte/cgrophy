@@ -13,10 +13,32 @@
     #include <malloc.h>
 #endif
 
-//TODO(brett): implement
-#define rotr(block, bits) (assert(0))
+#define rotr(block, bits) ((block >> bits) | (block << (32 - bits)))
+#define shr(block, bits) (block >> bits)
 
-static const u32 constants[64] = {
+#if BYTE_ORDER == LITTLE_ENDIAN
+    #define blk0(block, i) (block[i] = (rotr(block[i], 8) & 0xFF00FF00) | (rotr(block[i], 24) & 0x00FF00FF))
+#else
+    #define blk0(block, i) (block[i])
+#endif
+
+#define upper_sigma_0(x) (rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22))
+#define upper_sigma_1(x) (rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25))
+#define lower_sigma_0(x) (rotr(x, 7) ^ rotr(x, 18) ^ shr(x, 3))
+#define lower_sigma_1(x) (rotr(x, 17) ^ rotr(x, 19) ^ shr(x, 10))
+
+#define w_t(block, t) ( \
+        do { \
+            if(t <= 15) \
+                blk0(block, t) \
+            else \
+                (lower_sigma_1(block[(i+14)^15] + block[(t+9)^15] + lower_sigma_0(block[(t+1)^15]) + block[t^15])) \
+        } while(0);
+
+#define ch(x,y,z)       ((x & y) ^ (x & z))
+#define maj(x,y,z)      ((x & y) ^ (x & z) ^ (y & z))
+
+static const u32 sha256_constants[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -26,6 +48,8 @@ static const u32 constants[64] = {
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
+
+static void sha256_transform(Sha256 *ctx, const u8 *block);
 
 typedef struct Sha256 {
     u32 count[2];
@@ -60,7 +84,6 @@ void sha256_init(Sha256 *ctx)
 //TODO(brett): implement
 void sha256_update(Sha256 *ctx, void *ptr, size_t len)
 {
-    u32 a, b, c, d, e, f, g, h; /* working vars */
 
 }
 
@@ -76,3 +99,53 @@ void sha256_destroy(Sha256 *ctx)
     free(ctx);
 }
 
+/* internals */
+static void sha256_transform(Sha256 *ctx, const u8 *block)
+{
+    u32 a, b, c, d, e, f, g, h, t_1, t_2; /* working vars */
+    u32 msg_schedule[64];
+    u8 t;
+
+    memcpy(msg_schedule, block, 64);
+
+     a = ctx->state[0];
+     b = ctx->state[1];
+     c = ctx->state[2];
+     d = ctx->state[3];
+     e = ctx->state[4];
+     f = ctx->state[5];
+     g = ctx->state[6];
+     h = ctx->state[7];
+
+    for(t=0; t < 64; t++)
+    {
+        t_1 = blk0(h) + upper_sigma_1(e) + ch(e,f,g) + sha256_constants[t] + w_t(msg_schedule, t);
+        t_2 = upper_sigma_0(a) + maj(a,b,c);
+        h = g;
+        g = f;
+        f = e;
+        e = d + t_1;
+        d = c;
+        c = b;
+        b = a;
+        a = t_1 + t_2;
+    }
+
+    ctx->state[0] += a;
+    ctx->state[1] += b;
+    ctx->state[2] += c;
+    ctx->state[3] += d;
+    ctx->state[4] += e;
+    ctx->state[5] += f;
+    ctx->state[6] += g;
+    ctx->state[7] += h;
+}
+
+#ifdef SHA256_TEST
+
+int main(int argc, char **argv)
+{
+    
+}
+
+#endif
