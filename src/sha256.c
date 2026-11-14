@@ -15,6 +15,10 @@
     #include <malloc.h>
 #endif
 
+#ifdef SHA256_TEST
+    #include <stdio.h>
+#endif
+
 #define rotr(block, bits) ((block >> bits) | (block << (32 - bits)))
 #define shr(block, bits) (block >> bits)
 
@@ -29,8 +33,8 @@
 #define lower_sigma_0(x) (rotr(x, 7) ^ rotr(x, 18) ^ shr(x, 3))
 #define lower_sigma_1(x) (rotr(x, 17) ^ rotr(x, 19) ^ shr(x, 10))
 
-#define ch(x,y,z)       ((x & y) ^ (x & z))
-#define maj(x,y,z)      ((x & y) ^ (x & z) ^ (y & z))
+#define ch(x,y,z)       (((x) & (y)) ^ (~(x) & (z)))
+#define maj(x,y,z)      (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
 
 static const u32 sha256_constants[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -111,7 +115,7 @@ void sha256_final(Sha256 *ctx, unsigned char *digest)
 
     for(i=0; i < 8; i++)
     {
-        msg_size[i] = (u8)((ctx->count[(i >> 2) ? 1 : 0] >> ((3 - (i & 3)) * 8)) & 0xFF);
+		msg_size[i] = (u8)((ctx->count[i >= 4 ? 0 : 1] >> ((3 - (i & 3)) * 8)) & 255);
     }
 
     c = 0x80;
@@ -161,8 +165,8 @@ static void sha256_transform(u32 *state, const u8 *block)
 
     for(t=0; t < 64; t++)
     {
-        t_1 = h + upper_sigma_1(e) + ch(e,f,g) + sha256_constants[t] + w_t(msg_schedule, t); /* broken */
-        t_2 = upper_sigma_0(a) + maj(a,b,c); /* broken */
+        t_1 = h + upper_sigma_1(e) + ch(e,f,g) + sha256_constants[t] + w_t(msg_schedule, t); /* broken @ t=14 */
+        t_2 = upper_sigma_0(a) + maj(a,b,c);
         h = g;
         g = f;
         f = e;
@@ -188,14 +192,26 @@ static u32 w_t(u32 *block, u8 t)
     if(t <= 15)
         return blk0(block, t);
     else
-        return lower_sigma_1(block[(t+14)&15] + block[(t+9)&15] + lower_sigma_0(block[(t+1)&15]) + block[t&15]);
+    {
+        block[t&15] = lower_sigma_1(block[(t+14)&15]) + block[(t+9)&15] + lower_sigma_0(block[(t+1)&15]) + block[t&15];
+        return block[t&15];
+    }
 }
 
 #ifdef SHA256_TEST
 
+#define TEST_CNT 3
+
 int main(int argc, char **argv)
 {
+    int i, j, pass, fail;
+    j = 0;
+
+    printf("\033[38;5;3mSHA2-256 Test Suite\033[0m\n");
+
+    /* test 1. abc */
     Sha256 ctx_1;
+    int res_1;
     const char test_1[3] = "abc";
     unsigned char digest[32];
     const unsigned char expected[32] = { 0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad };
@@ -204,7 +220,73 @@ int main(int argc, char **argv)
     sha256_update(&ctx_1, test_1, sizeof(test_1));
     sha256_final(&ctx_1, digest);
 
-    assert(memcmp(expected, digest, 32) == 0);
+    res_1 = memcmp(expected, digest, 32);
+
+    if(!res_1)
+    {
+        ++pass;
+        printf("\033[32m1. 'abc' (%d/%d)\033[0m\n", ++j, TEST_CNT);
+    }
+    else
+    {
+        ++fail;
+        printf("\033[31m1. 'abc' (%d/%d)\033[0m\n", ++j, TEST_CNT);
+    }
+
+    /* test 2. abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq */
+    Sha256 ctx_2;
+    int res_2;
+    const char test_2[56] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    unsigned char digest_2[32];
+    const unsigned char expected_2[32] = { 0x24, 0x8d, 0x6a, 0x61, 0xd2, 0x06, 0x38, 0xb8, 0xe5, 0xc0, 0x26, 0x93, 0x0c, 0x3e, 0x60, 0x39, 0xa3, 0x3c, 0xe4, 0x59, 0x64, 0xff, 0x21, 0x67, 0xf6, 0xec, 0xed, 0xd4, 0x19, 0xdb, 0x06, 0xc1 };
+
+    sha256_init(&ctx_2);
+    sha256_update(&ctx_2, test_2, sizeof(test_2));
+    sha256_final(&ctx_2, digest_2);
+    res_2 = memcmp(expected_2, digest_2, 32);
+
+    if(!res_2)
+    {
+        ++pass;
+        printf("\033[32m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++j, TEST_CNT);
+    }
+    else
+    {
+        ++fail;
+        printf("\033[31m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++j, TEST_CNT);
+    }
+
+    /* test 3. 1 million a's */
+    Sha256 ctx_3;
+    int res_3;
+    const char test_3[1000000];
+    memset(test_3, 0x61, 1000000);
+    unsigned char digest_3[32];
+    const unsigned char expected_3[32] = { 0xcd, 0xc7, 0x6e, 0x5c, 0x99, 0x14, 0xfb, 0x92, 0x81, 0xa1, 0xc7, 0xe2, 0x84, 0xd7, 0x3e, 0x67, 0xf1, 0x80, 0x9a, 0x48, 0xa4, 0x97, 0x20, 0x0e, 0x04, 0x6d, 0x39, 0xcc, 0xc7, 0x11, 0x2c, 0xd1 };
+
+    sha256_init(&ctx_3);
+    for(i=0; i < 1000000; i+=10000)
+        sha256_update(&ctx_3, test_3+i, 10000);
+    sha256_final(&ctx_3, digest_3);
+
+    res_3 = memcmp(expected_3, digest_3, 32);
+
+    if(!res_3)
+    {
+        ++pass;
+        printf("\033[32m3. 1 million a's (%d/%d)\033[0m\n", ++j, TEST_CNT);
+    }
+    else
+    {
+        ++fail;
+        printf("\033[31m3. 1 million a's (%d/%d)\033[0m\n", ++j, TEST_CNT);
+    }
+
+    /* summarize */
+    printf("\n\033[32mPass: %d\033[0m\n", pass);
+    printf("\033[31mFail: %d\033[0m\n", fail);
+    assert(pass+fail == TEST_CNT);
+    printf("Total: %d", TEST_CNT);
 }
 
 #endif

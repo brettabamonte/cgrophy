@@ -7,7 +7,7 @@ echo. Available flags:
 echo.  -h Display this help message
 echo.  -d Set the configuration to Debug
 echo.  -z Compile tests
-echo.  -t Target 
+echo.  -t Target
 echo.  -c Clean previous build artifacts 
 exit /b 127
 
@@ -40,7 +40,7 @@ rem c4711 - function expanded inline by compiler. don't care.
 set "arguments=/Wall /wd4711 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\"
 
 if "%tests%"=="true" (
-    set "arguments=%arguments% /DSHA1_TEST"
+    set "arguments=%arguments% /DSHA1_TEST /DSHA256_TEST"
 )
 
 if "%conf%"=="release" (
@@ -56,4 +56,5 @@ lib /OUT:%target%\sha1.lib %target%\sha1.obj
 rem Build executable with entry-point that can run tests
 if "%tests%"=="true" (
     cl %arguments% src\sha1.c
+    cl %arguments% src\sha256.c
 )
