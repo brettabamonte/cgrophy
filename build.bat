@@ -37,7 +37,7 @@ goto Build
 
 :Build
 rem c4711 - function expanded inline by compiler. don't care.
-set "arguments=/Wall /wd4711 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\"
+set "arguments=/Wall /wd4711 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\ /nologo"
 
 if "%tests%"=="true" (
     set "arguments=%arguments% /DSHA1_TEST /DSHA256_TEST"

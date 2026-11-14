@@ -216,6 +216,8 @@ static void sha1_transform(u32 *state, const u8 buffer[64])
 
 #ifdef SHA1_TEST
 
+#define TEST_CNT 4
+
 #define SHA1_MONTE_CARLO_SEED \
     { 0xdd, 0x4d, 0xf6, 0x44, 0xea, 0xf3, 0xd8, 0x5b, 0xac, 0xe2, 0xb2, 0x1a, 0xcc, 0xaa, 0x22, 0xb2, 0x88, 0x21, 0xf5, 0xcd }
 
@@ -427,8 +429,14 @@ int main(int argc, char **argv)
 	(void)(argc);
 	(void)(argv);
 
+    int i, test_idx, pass, fail;
+    pass = fail = test_idx = 0;
+
+    printf("\033[38;5;3mSHA1 Test Suite\033[0m\n");
+
 	/* test 1, 'abc' */
 	Sha1Ctx ctx_1;
+    int res_1;
 	u8 digest[20];
 	char test_1[3] = "abc";
 	u8 expected[20] = { 0xA9, 0x99, 0x3E, 0x36, 0x47, 0x06, 0x81, 0x6A, 0xBA, 0x3E, 0x25, 0x71, 0x78, 0x50, 0xC2, 0x6C, 0x9C, 0xD0, 0xD8, 0x9D };
@@ -437,10 +445,22 @@ int main(int argc, char **argv)
 	sha1_update(&ctx_1, test_1, sizeof(test_1));
 	sha1_final(&ctx_1, digest);
 
-	assert(memcmp(expected, digest, 20) == 0);
+    res_1 = memcmp(expected, digest, 20);
+
+    if(!res_1)
+    {
+        ++pass;
+        printf("\033[32m1. 'abc' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
+    else
+    {
+        ++fail;
+        printf("\033[31m1. 'abc' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
 	
 	/* test 2, 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' */
 	Sha1Ctx ctx_2;
+    int res_2;
 	u8 digest_2[20];
 	char test_2[56] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
 	u8 expected_2[20] = { 0x84, 0x98, 0x3E, 0x44, 0x1C, 0x3B, 0xD2, 0x6E, 0xBA, 0xAE, 0x4A, 0xA1, 0xF9, 0x51, 0x29, 0xE5, 0xE5, 0x46, 0x70, 0xF1 };
@@ -449,11 +469,22 @@ int main(int argc, char **argv)
 	sha1_update(&ctx_2, test_2, sizeof(test_2));
 	sha1_final(&ctx_2, digest_2);
 
-	assert(memcmp(expected_2, digest_2, 20) == 0);
+    res_2 = memcmp(expected_2, digest_2, 20);
+
+    if(!res_2)
+    {
+        ++pass;
+        printf("\033[32m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
+    else
+    {
+        ++fail;
+        printf("\033[31m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
 
 	/* test 3, 1M 'a' */
 	Sha1Ctx ctx_3;
-	u32 i;
+    int res_3;
 	u8 digest_3[20];
 	char test_3[1000000];
 
@@ -469,11 +500,22 @@ int main(int argc, char **argv)
 	}
 	sha1_final(&ctx_3, digest_3);
 
-	assert(memcmp(expected_3, digest_3, 20) == 0);
+    res_3 = memcmp(expected_3, digest_3, 20);
+
+    if(!res_3)
+    {
+        ++pass;
+        printf("\033[32m3. 1 million a's (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
+    else
+    {
+        ++fail;
+        printf("\033[31m3. 1 million a's (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
 	
     /* test 4, Monte-Carlo Simulation */
     Sha1Ctx ctx_4;
-    int a, b;
+    int a, b, res_4;
     unsigned char seed[20] = SHA1_MONTE_CARLO_SEED;
     unsigned char state[4][20];
     unsigned char m[60];
@@ -494,8 +536,25 @@ int main(int argc, char **argv)
             sha1_final(&ctx_4, state[b&3]);
             memcpy(seed, state[b&3], 20);
         }
-        assert(memcmp(sha1_monte_carlo_expected[a], seed, 20) == 0);
+        res_4 = memcmp(sha1_monte_carlo_expected[a], seed, 20);
+        if (res_4)
+        {
+            ++fail;
+            printf("\033[31m4. Monte-Carlog simulation (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+            break;
+        }
     }
+    if (!res_4)
+    {
+        ++pass;
+        printf("\033[32m4. Monte-Carlo simulation (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+    }
+
+    /* summarize */
+    printf("\n\033[32mPass: %d\033[0m\n", pass);
+    printf("\033[31mFail: %d\033[0m\n", fail);
+    assert(pass+fail == TEST_CNT);
+    printf("Total: %d", TEST_CNT);
 
 }
 
