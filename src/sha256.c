@@ -32,7 +32,7 @@
             if(t <= 15) \
                 blk0(block, t) \
             else \
-                (lower_sigma_1(block[(i+14)^15] + block[(t+9)^15] + lower_sigma_0(block[(t+1)^15]) + block[t^15])) \
+                (lower_sigma_1(block[(i+14)&15] + block[(t+9)&15] + lower_sigma_0(block[(t+1)&15]) + block[t&15])) \
         } while(0);
 
 #define ch(x,y,z)       ((x & y) ^ (x & z))
@@ -87,10 +87,35 @@ void sha256_update(Sha256 *ctx, void *ptr, size_t len)
 
 }
 
-//TODO(brett): implement
 void sha256_final(Sha256 *ctx, unsigned char *digest)
 {
+    u8 i, c;
+    u8 msg_size[8];
 
+    for(i=0; i < 8; i++)
+    {
+        msg_size[i] = (u8)((ctx->count[(i >> 2) ? 1 : 0] >> ((3 - (i & 3)) * 8)) & 0xFF);
+    }
+
+    c = 0x80;
+    sha256_update(ctx, &c, 1); /* append bit 1 */
+    c = 0x00;
+    while((ctx->count[0] & 504) != 448)
+    {
+        sha256_update(ctx, &c, 1);
+    }
+
+    sha1_update(ctx, msg_size, 8); /* should trigger transform() */
+
+    /* output digest */
+    for(i=0; i < 32; i++)
+    {
+        /* we isolate the byte from each word by identifying the word. Then shifting the byte to the bottom 8 bits. We need to multiply by 8 because the shift is in bits not bytes */
+        digest[i] = (u8)((ctx->state[(i >> 2)] >> ((3 - (i & 3)) * 8)) & 0xFF);
+    }
+
+    /* clear context vars */
+    memset(ctx, '\0', sizeof(*ctx));
 }
 
 void sha256_destroy(Sha256 *ctx)
