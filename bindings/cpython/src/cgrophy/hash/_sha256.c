@@ -53,7 +53,7 @@ static PyObject *Sha256_digest(PyObject *op) {
     /* do we need to inc ref count here or does client do that. From examples it seems like
      * client is responsible for owning reference to the handle we return ? */
     //TODO( brett); PyBytes expects char * but the digest assumes unsigned char
-    res = PyBytes_FromStringAndSize(digest, 20);
+    res = PyBytes_FromStringAndSize(digest, 32);
     return res;
 }
 
