@@ -15,11 +15,11 @@ includes = project_data["includes"]
 libs = project_data["libs"]
 
 ext = Extension(
-    name="cgrophy",
-    sources=["src/cgrophymodule.c"],
+    name="_cgrophy_hash",
+    sources=["src/cgrophy/hash/_sha1.c", "src/cgrophy/hash/_sha256.c", "src/cgrophy/hash/_hashmodule.c"],
     include_dirs=includes,
     library_dirs=libs,
-    libraries=["sha1"],
+    libraries=["sha1", "sha256"],
 )
 
 setup(

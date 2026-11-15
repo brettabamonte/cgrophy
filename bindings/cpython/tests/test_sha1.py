@@ -1,4 +1,4 @@
-from cgrophy import Sha1
+from cgrophy.hash import Sha1
 
 SHA1_MONTE_CARLO = {
     "seed": bytes.fromhex("dd4df644eaf3d85bace2b21accaa22b28821f5cd"),

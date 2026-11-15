@@ -53,6 +53,9 @@ rem Finally build library
 cl %arguments% /c src\sha1.c
 lib /OUT:%target%\sha1.lib %target%\sha1.obj
 
+cl %arguments% /c src\sha256.c
+lib /OUT:%target%\sha256.lib %target%\sha256.obj
+
 rem Build executable with entry-point that can run tests
 if "%tests%"=="true" (
     cl %arguments% src\sha1.c

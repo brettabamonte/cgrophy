@@ -47,26 +47,26 @@ static const u32 sha256_constants[64] = {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-static void sha256_transform(Sha256 *ctx, const u8 *block);
+static void sha256_transform(Sha256Ctx *ctx, const u8 *block);
 static u32 w_t(u32 *block, u8 t);
 
-typedef struct Sha256 {
+typedef struct Sha256Ctx {
     u32 count[2];
     u32 state[8];
     u8  buffer[64];
-}Sha256;
+}Sha256Ctx;
 
 /* Public API */
 
-Sha256* sha256_new(void)
+Sha256Ctx* sha256_new(void)
 {
-    Sha256 *new;
-    new = (Sha256 *)malloc(sizeof(*new));
+    Sha256Ctx *new;
+    new = (Sha256Ctx *)malloc(sizeof(*new));
 
     return new;
 }
 
-void sha256_init(Sha256 *ctx)
+void sha256_init(Sha256Ctx *ctx)
 {
     ctx->state[0] = 0x6a09e667;
     ctx->state[1] = 0xbb67ae85;
@@ -81,7 +81,7 @@ void sha256_init(Sha256 *ctx)
 }
 
 //IMPROVEMENT: add checked runtime error on len. if greater than 2^32-1.
-void sha256_update(Sha256 *ctx, u8 *ptr, size_t len)
+void sha256_update(Sha256Ctx *ctx, u8 *ptr, size_t len)
 {
     u32 i, j;
 
@@ -108,7 +108,7 @@ void sha256_update(Sha256 *ctx, u8 *ptr, size_t len)
 	memcpy(&ctx->buffer[j], &ptr[i], len - i);
 }
 
-void sha256_final(Sha256 *ctx, unsigned char *digest)
+void sha256_final(Sha256Ctx *ctx, unsigned char *digest)
 {
     u8 i, c;
     u8 msg_size[8];
@@ -139,7 +139,7 @@ void sha256_final(Sha256 *ctx, unsigned char *digest)
     memset(ctx, '\0', sizeof(*ctx));
 }
 
-void sha256_destroy(Sha256 *ctx)
+void sha256_destroy(Sha256Ctx *ctx)
 {
     assert(ctx);
     free(ctx);
@@ -419,7 +419,7 @@ int main(int argc, char **argv)
     printf("\033[38;5;3mSHA2-256 Test Suite\033[0m\n");
 
     /* test 1. abc */
-    Sha256 ctx_1;
+    Sha256Ctx ctx_1;
     int res_1;
     const char test_1[3] = "abc";
     unsigned char digest[32];
@@ -443,7 +443,7 @@ int main(int argc, char **argv)
     }
 
     /* test 2. abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq */
-    Sha256 ctx_2;
+    Sha256Ctx ctx_2;
     int res_2;
     const char test_2[56] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
     unsigned char digest_2[32];
@@ -466,7 +466,7 @@ int main(int argc, char **argv)
     }
 
     /* test 3. 1 million a's */
-    Sha256 ctx_3;
+    Sha256Ctx ctx_3;
     int res_3;
     const char test_3[1000000];
     memset(test_3, 0x61, 1000000);
@@ -492,7 +492,7 @@ int main(int argc, char **argv)
     }
 
     /* test 4. Monte-Carlo Simulation */
-    Sha256 ctx_4;
+    Sha256Ctx ctx_4;
     int a, b, res_4;
     u8 md[96];
     u8 seed[32] = SHA256_MONTE_CARLO_SEED;

@@ -6,8 +6,8 @@
 	- [x] python package test suite
 	- [x] python package
 - [ ] sha256
-	- [ ] c lib test suite
-	- [ ] c lib
+	- [x] c lib test suite
+	- [x] c lib
 	- [ ] python package test suite
 	- [ ] python package
 - [ ] aes256gcm
