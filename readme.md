@@ -10,12 +10,14 @@
 	- [x] c lib
 	- [x] python package test suite
 	- [x] python package
-- [ ] aes256gcm
+- [ ] hmac
+    - crypto hash algos to support
+        - [ ] sha256
 	- [ ] c lib test suite
 	- [ ] c lib
 	- [ ] python package test suite
 	- [ ] python package
-- [ ] hmac sha256
+- [ ] aes256gcm
 	- [ ] c lib test suite
 	- [ ] c lib
 	- [ ] python package test suite
