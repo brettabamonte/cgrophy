@@ -37,9 +37,13 @@ S'1(Wt-3 XOR Wt-8 XOR Wt-14 XOR Wt-16) where S is circular left shift and 1 is t
 #define f2_4(b,c,d) (b ^ c ^ d)
 #define f3(b,c,d) ((b & c) | (b & d) | (c & d))
 
+void sha1_init(CgrophyHashFunc *obj);
+void sha1_update(CgrophyHashFunc *obj, u8 *ptr, size_t len);
+void sha1_digest(CgrophyHashFunc *obj, u8 *digest);
 static void sha1_transform(u32 state[5], const u8 buffer[64]);
 
 typedef struct Sha1Ctx{
+    CgrophyHashFunc o;
 	u32 count[2]; /* count of bits in msg. use two 32 bit #s to represent single 64 bit #. got from redis implementation */
 	u32 state[5];
 	u8 buffer[BUFFER_SIZE]; /* 512-bit buffer */
@@ -60,71 +64,87 @@ Sha1Ctx *sha1_new(void)
     return new;
 }
 
-void sha1_init(Sha1Ctx *ctx)
+void sha1_init(CgrophyHashFunc *obj)
 {
-	ctx->count[0] = ctx->count[1] = 0;
-	ctx->state[0] = 0x67452301;
-	ctx->state[1] = 0xEFCDAB89;
-	ctx->state[2] = 0x98BADCFE;
-	ctx->state[3] = 0x10325476;
-	ctx->state[4] = 0xC3D2E1F0;
-	memset(ctx->buffer, 0xEE, BUFFER_SIZE);
+    Sha1Ctx *self;
+    self = (Sha1Ctx *)obj;
+
+    self->o.init = &sha1_init;
+    self->o.update = &sha1_update;
+    self->o.final = &sha1_final;
+    self->o.digest_size = 20;
+    self->o.block_size = 64;
+
+	self->count[0] = self->count[1] = 0;
+
+	self->state[0] = 0x67452301;
+	self->state[1] = 0xEFCDAB89;
+	self->state[2] = 0x98BADCFE;
+	self->state[3] = 0x10325476;
+	self->state[4] = 0xC3D2E1F0;
+	memset(self->buffer, 0xEE, BUFFER_SIZE);
 }
 
-void sha1_update(Sha1Ctx *ctx, u8 *ptr, size_t len)
+void sha1_update(CgrophyHashFunc *obj, u8 *ptr, size_t len)
 {
+    Sha1Ctx *self;
 	u32 i, j;
+
+    self = (Sha1Ctx *)obj;
 	
 	/* update count of bits in msg */
-	j = ctx->count[0];
-	if((ctx->count[0] += len << 3) < j)
-		ctx->count[1]++;
-	ctx->count[1] += (len >> 29);
+	j = self->count[0];
+	if((self->count[0] += len << 3) < j)
+		self->count[1]++;
+	self->count[1] += (len >> 29);
 
 	/* get bytes in buffer % 64. let's us see if the new data length + bytes in buffer are enough for 512-bit block */
 	j = (j >> 3) & 63;
 	if ((j + len) > 63)
 	{
-		memcpy(&ctx->buffer[j], ptr, (i = 64 - j));
-		sha1_transform(ctx->state, ctx->buffer);
+		memcpy(&self->buffer[j], ptr, (i = 64 - j));
+		sha1_transform(self->state, self->buffer);
 
 		/* keep processing 512-bit blocks as long as we have them */
 		for ( ; i + 63 < len; i += 64)
-			sha1_transform(ctx->state, &ptr[i]);
+			sha1_transform(self->state, &ptr[i]);
 		j = 0;
 	}
 	else
 		i = 0;
 
 	/* buffer any bytes that couldn't be used to complete 512-bit block */
-	memcpy(&ctx->buffer[j], &ptr[i], len - i);
+	memcpy(&self->buffer[j], &ptr[i], len - i);
 }
 
-void sha1_final(Sha1Ctx *ctx, u8 *digest)
+void sha1_final(CgrophyHashFunc *obj, u8 *digest)
 {
+    Sha1Ctx *self;
 	u16 i;
 	u8 msg_len[8];
 	u8 c;
 
+    self = (Sha1Ctx *)obj;
+
 	for (i = 0; i < 8; i++)
 	{
-		msg_len[i] = (u8)((ctx->count[i >= 4 ? 0 : 1] >> ((3 - (i & 3)) * 8)) & 255);
+		msg_len[i] = (u8)((self->count[i >= 4 ? 0 : 1] >> ((3 - (i & 3)) * 8)) & 255);
 	}
 	c = 0200;
-	sha1_update(ctx, &c, 1);
-	while((ctx->count[0] & 504) != 448)
+	sha1_update(self, &c, 1);
+	while((self->count[0] & 504) != 448)
 	{
 		c = 0000;
-		sha1_update(ctx, &c, 1);
+		sha1_update(self, &c, 1);
 	}
-	sha1_update(ctx, msg_len, 8);
+	sha1_update(self, msg_len, 8);
 	for (i = 0; i < 20; i++)
 	{
-		digest[i] = (u8)((ctx->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
+		digest[i] = (u8)((self->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
 	}
 	
-	/* wipe ctx vars */
-	memset(ctx, '\0', sizeof(*ctx));
+	/* wipe self vars */
+	memset(self, '\0', sizeof(*self));
 }
 
 void sha1_destroy(Sha1Ctx *ctx)

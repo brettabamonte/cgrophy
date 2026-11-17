@@ -40,7 +40,7 @@ rem c4711 - function expanded inline by compiler. don't care.
 set "arguments=/Wall /wd4711 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\ /nologo"
 
 if "%tests%"=="true" (
-    set "arguments=%arguments% /DSHA1_TEST /DSHA256_TEST"
+    set "arguments=%arguments% /DSHA1_TEST /DSHA256_TEST /DHMAC_TEST"
 )
 
 if "%conf%"=="release" (
@@ -56,8 +56,13 @@ lib /OUT:%target%\sha1.lib %target%\sha1.obj
 cl %arguments% /c src\sha256.c
 lib /OUT:%target%\sha256.lib %target%\sha256.obj
 
+cl %arguments% /c src\hmac.c
+lib /OUT:%target%\hmac.lib %target%\hmac.obj
+
+echo cl %arguments% /LIBPATH:%target%\sha256.lib src\hmac.c sha256.lib
 rem Build executable with entry-point that can run tests
 if "%tests%"=="true" (
     cl %arguments% src\sha1.c
     cl %arguments% src\sha256.c
+    cl %arguments% src\hmac.c /link /LIBPATH:%target% sha256.lib
 )

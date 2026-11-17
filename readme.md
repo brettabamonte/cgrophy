@@ -27,6 +27,8 @@
 - [ ] Implement ACVP Secure Hash Algorithm (SHA) JSON Specification
 - [ ] add checked runtime errors
     - [ ] msg size > 2^64-1
+- [ ] rethink hash function interface to expose function instead of relying on
+structure for digest value??
 
 ## abi support
 

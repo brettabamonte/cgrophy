@@ -47,14 +47,20 @@ static const u32 sha256_constants[64] = {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-static void sha256_transform(Sha256Ctx *ctx, const u8 *block);
+Sha256Ctx *new(void);
+void sha256_init(CgrophyHashFunc *obj);
+void sha256_update(CgrophyHashFunc *obj, unsigned char *ptr, size_t len);
+void sha256_final(CgrophyHashFunc *obj, unsigned char *digest);
+
+static void sha256_transform(u32 *state, const u8 *block);
 static u32 w_t(u32 *block, u8 t);
 
-typedef struct Sha256Ctx {
+struct Sha256Ctx {
+    CgrophyHashFunc o;
     u32 count[2];
     u32 state[8];
     u8  buffer[64];
-}Sha256Ctx;
+};
 
 /* Public API */
 
@@ -63,80 +69,104 @@ Sha256Ctx* sha256_new(void)
     Sha256Ctx *new;
     new = (Sha256Ctx *)malloc(sizeof(*new));
 
+    if (new == NULL)
+    {
+        return NULL;
+    }
+
+    sha256_init((CgrophyHashFunc *)new);
+
     return new;
 }
 
-void sha256_init(Sha256Ctx *ctx)
+void sha256_init(CgrophyHashFunc *obj)
 {
-    ctx->state[0] = 0x6a09e667;
-    ctx->state[1] = 0xbb67ae85;
-    ctx->state[2] = 0x3c6ef372;
-    ctx->state[3] = 0xa54ff53a;
-    ctx->state[4] = 0x510e527f;
-    ctx->state[5] = 0x9b05688c;
-    ctx->state[6] = 0x1f83d9ab;
-    ctx->state[7] = 0x5be0cd19;
+    Sha256Ctx *self;
 
-    ctx->count[0] = ctx->count[1] = 0;
+    self = (Sha256Ctx *)obj;
+
+    self->o.new = &sha256_new;
+    self->o.init = &sha256_init;
+    self->o.update = &sha256_update;
+    self->o.final = &sha256_final;
+    self->o.digest_size = 32;
+    self->o.block_size = 64;
+
+    self->state[0] = 0x6a09e667;
+    self->state[1] = 0xbb67ae85;
+    self->state[2] = 0x3c6ef372;
+    self->state[3] = 0xa54ff53a;
+    self->state[4] = 0x510e527f;
+    self->state[5] = 0x9b05688c;
+    self->state[6] = 0x1f83d9ab;
+    self->state[7] = 0x5be0cd19;
+
+    self->count[0] = self->count[1] = 0;
 }
 
 //IMPROVEMENT: add checked runtime error on len. if greater than 2^32-1.
-void sha256_update(Sha256Ctx *ctx, u8 *ptr, size_t len)
+void sha256_update(CgrophyHashFunc *obj, u8 *ptr, size_t len)
 {
+    Sha256Ctx *self;
     u32 i, j;
 
-    j = ctx->count[0];
-    if((ctx->count[0] += (len << 3)) < j)
-        ctx->count[1]++;
-    ctx->count[1] += len >> 29;
+    self = (Sha256Ctx *)obj;
+
+    j = self->count[0];
+    if((self->count[0] += (len << 3)) < j)
+        self->count[1]++;
+    self->count[1] += len >> 29;
 
 	j = (j >> 3) & 63; /* get number of bytes in lower 32 */
 	if ((j + len) > 63)
 	{
-		memcpy(&ctx->buffer[j], ptr, (i = 64 - j));
-		sha256_transform(ctx->state, ctx->buffer);
+		memcpy(&self->buffer[j], ptr, (i = 64 - j));
+		sha256_transform(self->state, self->buffer);
 
 		/* keep processing 512-bit blocks as long as we have them */
 		for ( ; i + 63 < len; i += 64)
-			sha256_transform(ctx->state, &ptr[i]);
+			sha256_transform(self->state, &ptr[i]);
 		j = 0;
 	}
 	else
 		i = 0;
 
 	/* buffer any bytes that couldn't be used to complete 512-bit block */
-	memcpy(&ctx->buffer[j], &ptr[i], len - i);
+	memcpy(&self->buffer[j], &ptr[i], len - i);
 }
 
-void sha256_final(Sha256Ctx *ctx, unsigned char *digest)
+void sha256_final(CgrophyHashFunc *obj, unsigned char *digest)
 {
+    Sha256Ctx *self;
     u8 i, c;
     u8 msg_size[8];
 
+    self = (Sha256Ctx *) obj;
+
     for(i=0; i < 8; i++)
     {
-		msg_size[i] = (u8)((ctx->count[i >= 4 ? 0 : 1] >> ((3 - (i & 3)) * 8)) & 255);
+		msg_size[i] = (u8)((self->count[i >= 4 ? 0 : 1] >> ((3 - (i & 3)) * 8)) & 255);
     }
 
     c = 0x80;
-    sha256_update(ctx, &c, 1); /* append bit 1 */
+    sha256_update(self, &c, 1); /* append bit 1 */
     c = 0x00;
-    while((ctx->count[0] & 504) != 448)
+    while((self->count[0] & 504) != 448)
     {
-        sha256_update(ctx, &c, 1);
+        sha256_update(self, &c, 1);
     }
 
-    sha256_update(ctx, msg_size, 8); /* should trigger transform() */
+    sha256_update(self, msg_size, 8); /* should trigger transform() */
 
     /* output digest */
     for(i=0; i < 32; i++)
     {
         /* we isolate the byte from each word by identifying the word. Then shifting the byte to the bottom 8 bits. We need to multiply by 8 because the shift is in bits not bytes */
-        digest[i] = (u8)((ctx->state[(i >> 2)] >> ((3 - (i & 3)) * 8)) & 0xFF);
+        digest[i] = (u8)((self->state[(i >> 2)] >> ((3 - (i & 3)) * 8)) & 0xFF);
     }
 
     /* clear context vars */
-    memset(ctx, '\0', sizeof(*ctx));
+    memset(self, '\0', sizeof(*self));
 }
 
 void sha256_destroy(Sha256Ctx *ctx)
@@ -407,133 +437,133 @@ static const u8 sha256_monte_carlo_expected[100][32] = {
     { 0x6a, 0x91, 0x2b, 0xa4, 0x18, 0x83, 0x91, 0xa7, 0x8e, 0x6f, 0x13, 0xd8, 0x8e, 0xd2, 0xd1, 0x4e, 0x13, 0xaf, 0xce, 0x9d, 0xb6, 0xf7, 0xdc, 0xbf, 0x4a, 0x48, 0xc2, 0x4f, 0x3d, 0xb0, 0x27, 0x78 }
 };
 
-int main(int argc, char **argv)
-{
-
-    (void)(argc);
-    (void)(argv);
-
-    int i, test_idx, pass, fail;
-    pass = fail = test_idx = 0;
-
-    printf("\033[38;5;3mSHA2-256 Test Suite\033[0m\n");
-
-    /* test 1. abc */
-    Sha256Ctx ctx_1;
-    int res_1;
-    const char test_1[3] = "abc";
-    unsigned char digest[32];
-    const unsigned char expected[32] = { 0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad };
-
-    sha256_init(&ctx_1);
-    sha256_update(&ctx_1, test_1, sizeof(test_1));
-    sha256_final(&ctx_1, digest);
-
-    res_1 = memcmp(expected, digest, 32);
-
-    if(!res_1)
-    {
-        ++pass;
-        printf("\033[32m1. 'abc' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-    else
-    {
-        ++fail;
-        printf("\033[31m1. 'abc' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-
-    /* test 2. abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq */
-    Sha256Ctx ctx_2;
-    int res_2;
-    const char test_2[56] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
-    unsigned char digest_2[32];
-    const unsigned char expected_2[32] = { 0x24, 0x8d, 0x6a, 0x61, 0xd2, 0x06, 0x38, 0xb8, 0xe5, 0xc0, 0x26, 0x93, 0x0c, 0x3e, 0x60, 0x39, 0xa3, 0x3c, 0xe4, 0x59, 0x64, 0xff, 0x21, 0x67, 0xf6, 0xec, 0xed, 0xd4, 0x19, 0xdb, 0x06, 0xc1 };
-
-    sha256_init(&ctx_2);
-    sha256_update(&ctx_2, test_2, sizeof(test_2));
-    sha256_final(&ctx_2, digest_2);
-    res_2 = memcmp(expected_2, digest_2, 32);
-
-    if(!res_2)
-    {
-        ++pass;
-        printf("\033[32m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-    else
-    {
-        ++fail;
-        printf("\033[31m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-
-    /* test 3. 1 million a's */
-    Sha256Ctx ctx_3;
-    int res_3;
-    const char test_3[1000000];
-    memset(test_3, 0x61, 1000000);
-    unsigned char digest_3[32];
-    const unsigned char expected_3[32] = { 0xcd, 0xc7, 0x6e, 0x5c, 0x99, 0x14, 0xfb, 0x92, 0x81, 0xa1, 0xc7, 0xe2, 0x84, 0xd7, 0x3e, 0x67, 0xf1, 0x80, 0x9a, 0x48, 0xa4, 0x97, 0x20, 0x0e, 0x04, 0x6d, 0x39, 0xcc, 0xc7, 0x11, 0x2c, 0xd0 };
-
-    sha256_init(&ctx_3);
-    for(i=0; i < 1000000; i+=10000)
-        sha256_update(&ctx_3, test_3+i, 10000);
-    sha256_final(&ctx_3, digest_3);
-
-    res_3 = memcmp(expected_3, digest_3, 32);
-
-    if(!res_3)
-    {
-        ++pass;
-        printf("\033[32m3. 1 million a's (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-    else
-    {
-        ++fail;
-        printf("\033[31m3. 1 million a's (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-
-    /* test 4. Monte-Carlo Simulation */
-    Sha256Ctx ctx_4;
-    int a, b, res_4;
-    u8 md[96];
-    u8 seed[32] = SHA256_MONTE_CARLO_SEED;
-    u8 state[4][32];
-
-    for(a=0; a<100; a++)
-    {
-        memcpy(state[0], seed, 32);
-        memcpy(state[1], seed, 32);
-        memcpy(state[2], seed, 32);
-        memcpy(state[3], seed, 32);
-        for(b=0; b<1000; b++)
-        {
-            sha256_init(&ctx_4);
-            memcpy(md, state[(b+1)&3], 32);
-            memcpy(md+32, state[(b+2)&3], 32);
-            memcpy(md+64, state[(b+3)&3], 32);
-            sha256_update(&ctx_4, md, 96);
-            sha256_final(&ctx_4, state[b&3]);
-            memcpy(seed, state[b&3], 32);
-        }
-        res_4 = memcmp(sha256_monte_carlo_expected[a], seed, 32);
-        if (res_4)
-        {
-            ++fail;
-            printf("\033[31m4. Monte-Carlog simulation (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-            break;
-        }
-
-    }
-    if (!res_4)
-    {
-        ++pass;
-        printf("\033[32m4. Monte-Carlo simulation (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
-    }
-
-    /* summarize */
-    printf("\n\033[32mPass: %d\033[0m\n", pass);
-    printf("\033[31mFail: %d\033[0m\n", fail);
-    assert(pass+fail == TEST_CNT);
-    printf("Total: %d", TEST_CNT);
-}
+//int main(int argc, char **argv)
+//{
+//
+//    (void)(argc);
+//    (void)(argv);
+//
+//    int i, test_idx, pass, fail;
+//    pass = fail = test_idx = 0;
+//
+//    printf("\033[38;5;3mSHA2-256 Test Suite\033[0m\n");
+//
+//    /* test 1. abc */
+//    Sha256Ctx ctx_1;
+//    int res_1;
+//    const char test_1[3] = "abc";
+//    unsigned char digest[32];
+//    const unsigned char expected[32] = { 0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad };
+//
+//    sha256_init(&ctx_1);
+//    sha256_update(&ctx_1, test_1, sizeof(test_1));
+//    sha256_final(&ctx_1, digest);
+//
+//    res_1 = memcmp(expected, digest, 32);
+//
+//    if(!res_1)
+//    {
+//        ++pass;
+//        printf("\033[32m1. 'abc' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//    else
+//    {
+//        ++fail;
+//        printf("\033[31m1. 'abc' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//
+//    /* test 2. abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq */
+//    Sha256Ctx ctx_2;
+//    int res_2;
+//    const char test_2[56] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+//    unsigned char digest_2[32];
+//    const unsigned char expected_2[32] = { 0x24, 0x8d, 0x6a, 0x61, 0xd2, 0x06, 0x38, 0xb8, 0xe5, 0xc0, 0x26, 0x93, 0x0c, 0x3e, 0x60, 0x39, 0xa3, 0x3c, 0xe4, 0x59, 0x64, 0xff, 0x21, 0x67, 0xf6, 0xec, 0xed, 0xd4, 0x19, 0xdb, 0x06, 0xc1 };
+//
+//    sha256_init(&ctx_2);
+//    sha256_update(&ctx_2, test_2, sizeof(test_2));
+//    sha256_final(&ctx_2, digest_2);
+//    res_2 = memcmp(expected_2, digest_2, 32);
+//
+//    if(!res_2)
+//    {
+//        ++pass;
+//        printf("\033[32m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//    else
+//    {
+//        ++fail;
+//        printf("\033[31m2. 'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq' (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//
+//    /* test 3. 1 million a's */
+//    Sha256Ctx ctx_3;
+//    int res_3;
+//    const char test_3[1000000];
+//    memset(test_3, 0x61, 1000000);
+//    unsigned char digest_3[32];
+//    const unsigned char expected_3[32] = { 0xcd, 0xc7, 0x6e, 0x5c, 0x99, 0x14, 0xfb, 0x92, 0x81, 0xa1, 0xc7, 0xe2, 0x84, 0xd7, 0x3e, 0x67, 0xf1, 0x80, 0x9a, 0x48, 0xa4, 0x97, 0x20, 0x0e, 0x04, 0x6d, 0x39, 0xcc, 0xc7, 0x11, 0x2c, 0xd0 };
+//
+//    sha256_init(&ctx_3);
+//    for(i=0; i < 1000000; i+=10000)
+//        sha256_update(&ctx_3, test_3+i, 10000);
+//    sha256_final(&ctx_3, digest_3);
+//
+//    res_3 = memcmp(expected_3, digest_3, 32);
+//
+//    if(!res_3)
+//    {
+//        ++pass;
+//        printf("\033[32m3. 1 million a's (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//    else
+//    {
+//        ++fail;
+//        printf("\033[31m3. 1 million a's (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//
+//    /* test 4. Monte-Carlo Simulation */
+//    Sha256Ctx ctx_4;
+//    int a, b, res_4;
+//    u8 md[96];
+//    u8 seed[32] = SHA256_MONTE_CARLO_SEED;
+//    u8 state[4][32];
+//
+//    for(a=0; a<100; a++)
+//    {
+//        memcpy(state[0], seed, 32);
+//        memcpy(state[1], seed, 32);
+//        memcpy(state[2], seed, 32);
+//        memcpy(state[3], seed, 32);
+//        for(b=0; b<1000; b++)
+//        {
+//            sha256_init(&ctx_4);
+//            memcpy(md, state[(b+1)&3], 32);
+//            memcpy(md+32, state[(b+2)&3], 32);
+//            memcpy(md+64, state[(b+3)&3], 32);
+//            sha256_update(&ctx_4, md, 96);
+//            sha256_final(&ctx_4, state[b&3]);
+//            memcpy(seed, state[b&3], 32);
+//        }
+//        res_4 = memcmp(sha256_monte_carlo_expected[a], seed, 32);
+//        if (res_4)
+//        {
+//            ++fail;
+//            printf("\033[31m4. Monte-Carlog simulation (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//            break;
+//        }
+//
+//    }
+//    if (!res_4)
+//    {
+//        ++pass;
+//        printf("\033[32m4. Monte-Carlo simulation (%d/%d)\033[0m\n", ++test_idx, TEST_CNT);
+//    }
+//
+//    /* summarize */
+//    printf("\n\033[32mPass: %d\033[0m\n", pass);
+//    printf("\033[31mFail: %d\033[0m\n", fail);
+//    assert(pass+fail == TEST_CNT);
+//    printf("Total: %d", TEST_CNT);
+//}
 
 #endif

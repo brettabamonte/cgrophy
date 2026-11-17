@@ -53,3 +53,8 @@ echo.
 echo.
 
 sha256.exe
+
+echo.
+echo.
+
+hmac.exe
