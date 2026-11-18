@@ -4,6 +4,7 @@
  * https://csrc.nist.gov/files/pubs/fips/180-2/upd1/final/docs/fips180-2withchangenotice.pdf.. this could be the wrong fips publication
  */ 
 
+#include "hash.h"
 #include "sha256.h"
 #include "types.h"
 
@@ -51,6 +52,7 @@ Sha256Ctx *new(void);
 void sha256_init(CgrophyHashFunc *obj);
 void sha256_update(CgrophyHashFunc *obj, unsigned char *ptr, size_t len);
 void sha256_final(CgrophyHashFunc *obj, unsigned char *digest);
+void sha256_destroy(CgrophyHashFunc *obj);
 
 static void sha256_transform(u32 *state, const u8 *block);
 static u32 w_t(u32 *block, u8 t);
@@ -63,10 +65,17 @@ struct Sha256Ctx {
 };
 
 /* Public API */
+const HashFunctionPrototype hash_function_prototype_sha256 = {
+                                                .new = &sha256_new,
+                                                .block_size = 64,
+                                                .digest_size = 32,
+                                               };
 
 Sha256Ctx* sha256_new(void)
 {
     Sha256Ctx *new;
+    CgrophyHashFuncVTable *vtable;
+
     new = (Sha256Ctx *)malloc(sizeof(*new));
 
     if (new == NULL)
@@ -74,7 +83,20 @@ Sha256Ctx* sha256_new(void)
         return NULL;
     }
 
-    sha256_init((CgrophyHashFunc *)new);
+    vtable = (CgrophyHashFuncVTable *)malloc(sizeof(*vtable));
+
+    if (vtable == NULL)
+    {
+        return NULL;
+    }
+
+    vtable->init = &sha256_init;
+    vtable->update = &sha256_update;
+    vtable->final = &sha256_final;
+    vtable->destroy = &sha256_destroy;
+
+    new->o.type = SHA256;
+    new->o.vtable = vtable;
 
     return new;
 }
@@ -84,13 +106,6 @@ void sha256_init(CgrophyHashFunc *obj)
     Sha256Ctx *self;
 
     self = (Sha256Ctx *)obj;
-
-    self->o.new = &sha256_new;
-    self->o.init = &sha256_init;
-    self->o.update = &sha256_update;
-    self->o.final = &sha256_final;
-    self->o.digest_size = 32;
-    self->o.block_size = 64;
 
     self->state[0] = 0x6a09e667;
     self->state[1] = 0xbb67ae85;
@@ -169,10 +184,14 @@ void sha256_final(CgrophyHashFunc *obj, unsigned char *digest)
     memset(self, '\0', sizeof(*self));
 }
 
-void sha256_destroy(Sha256Ctx *ctx)
+void sha256_destroy(CgrophyHashFunc *obj)
 {
-    assert(ctx);
-    free(ctx);
+    assert(obj);
+    free(obj->vtable->init);
+    free(obj->vtable->update);
+    free(obj->vtable->final);
+    free(obj->vtable);
+    free(obj);
 }
 
 /* internals */

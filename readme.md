@@ -11,9 +11,9 @@
 	- [x] python package test suite
 	- [x] python package
 - [ ] hmac
-    - crypto hash algos to support
-        - [ ] sha256
 	- [ ] c lib test suite
+        - [ ] sha256
+        - [ ] sha1
 	- [ ] c lib
 	- [ ] python package test suite
 	- [ ] python package

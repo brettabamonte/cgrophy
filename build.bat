@@ -37,7 +37,7 @@ goto Build
 
 :Build
 rem c4711 - function expanded inline by compiler. don't care.
-set "arguments=/Wall /wd4711 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\ /nologo"
+set "arguments=/Wall /wd4711 /wd4133 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\ /nologo"
 
 if "%tests%"=="true" (
     set "arguments=%arguments% /DSHA1_TEST /DSHA256_TEST /DHMAC_TEST"
@@ -50,19 +50,18 @@ if "%conf%"=="release" (
 )
 
 rem Finally build library
-cl %arguments% /c src\sha1.c
-lib /OUT:%target%\sha1.lib %target%\sha1.obj
+rem cl %arguments% /c src\sha1.c
+rem lib /OUT:%target%\sha1.lib %target%\sha1.obj
+rem 
+rem cl %arguments% /c src\sha256.c
+rem lib /OUT:%target%\sha256.lib %target%\sha256.obj
+rem 
+rem cl %arguments% /c src\hmac.c
+rem lib /OUT:%target%\hmac.lib %target%\hmac.obj
 
-cl %arguments% /c src\sha256.c
-lib /OUT:%target%\sha256.lib %target%\sha256.obj
-
-cl %arguments% /c src\hmac.c
-lib /OUT:%target%\hmac.lib %target%\hmac.obj
-
-echo cl %arguments% /LIBPATH:%target%\sha256.lib src\hmac.c sha256.lib
 rem Build executable with entry-point that can run tests
 if "%tests%"=="true" (
-    cl %arguments% src\sha1.c
-    cl %arguments% src\sha256.c
-    cl %arguments% src\hmac.c /link /LIBPATH:%target% sha256.lib
+    rem cl %arguments% src\sha1.c
+    rem cl %arguments% src\sha256.c
+    cl %arguments% src\hmac.c src\hash.c /link /LIBPATH:%target% sha256.lib sha1.lib
 )

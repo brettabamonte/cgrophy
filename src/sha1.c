@@ -2,6 +2,7 @@
 * https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/fipspub180-1.pdf
 */
 
+#include "hash.h"
 #include "sha1.h"
 #include "types.h"
 
@@ -37,9 +38,12 @@ S'1(Wt-3 XOR Wt-8 XOR Wt-14 XOR Wt-16) where S is circular left shift and 1 is t
 #define f2_4(b,c,d) (b ^ c ^ d)
 #define f3(b,c,d) ((b & c) | (b & d) | (c & d))
 
+Sha1Ctx *new(void);
 void sha1_init(CgrophyHashFunc *obj);
 void sha1_update(CgrophyHashFunc *obj, u8 *ptr, size_t len);
 void sha1_digest(CgrophyHashFunc *obj, u8 *digest);
+void sha1_destroy(CgrophyHashFunc *obj);
+
 static void sha1_transform(u32 state[5], const u8 buffer[64]);
 
 typedef struct Sha1Ctx{
@@ -49,17 +53,40 @@ typedef struct Sha1Ctx{
 	u8 buffer[BUFFER_SIZE]; /* 512-bit buffer */
 }Sha1Ctx;
 
+const HashFunctionPrototype hash_function_prototype_sha1 = {
+                                                .new = &sha1_new,
+                                                .block_size = 64,
+                                                .digest_size = 20,
+                                               };
+
 /* public api implementation */
 
 Sha1Ctx *sha1_new(void)
 {
     Sha1Ctx *new;
+    CgrophyHashFuncVTable *vtable;
+
     new = (Sha1Ctx*)malloc(sizeof(Sha1Ctx));
 
     if (new == NULL)
     {
         return NULL;
     }
+
+    vtable = (CgrophyHashFuncVTable *)malloc(sizeof(*vtable));
+
+    if (vtable == NULL)
+    {
+        return NULL;
+    }
+
+    vtable->init = &sha1_init;
+    vtable->update = sha1_update;
+    vtable->final = sha1_final;
+    vtable->destroy = sha1_destroy;
+
+    new->o.type = SHA1;
+    new->o.vtable = vtable;
 
     return new;
 }
@@ -68,12 +95,6 @@ void sha1_init(CgrophyHashFunc *obj)
 {
     Sha1Ctx *self;
     self = (Sha1Ctx *)obj;
-
-    self->o.init = &sha1_init;
-    self->o.update = &sha1_update;
-    self->o.final = &sha1_final;
-    self->o.digest_size = 20;
-    self->o.block_size = 64;
 
 	self->count[0] = self->count[1] = 0;
 
@@ -147,10 +168,14 @@ void sha1_final(CgrophyHashFunc *obj, u8 *digest)
 	memset(self, '\0', sizeof(*self));
 }
 
-void sha1_destroy(Sha1Ctx *ctx)
+void sha1_destroy(CgrophyHashFunc *obj)
 {
-    assert(ctx);
-    free(ctx);
+    assert(obj);
+    free(obj->vtable->init);
+    free(obj->vtable->update);
+    free(obj->vtable->final);
+    free(obj->vtable);
+    free(obj);
 }
 
 /* internals */
