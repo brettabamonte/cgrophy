@@ -63,7 +63,7 @@ void hmac_init(CgrophyHmac *obj, u8 *key, size_t key_len, CgrophyHashFuncType ty
     }
     else
     {
-        if (key_len > digest_size)
+        if (key_len > block_size)
         {
             /* hash input key */
             hash_function_update(h_func, key, key_len);
