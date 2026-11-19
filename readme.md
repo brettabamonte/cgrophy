@@ -11,6 +11,8 @@
 	- [x] python package test suite
 	- [x] python package
 - [ ] hmac
+    - [ ] todos
+        - [ ] when key len > or < block size theres issues
 	- [ ] c lib test suite
         - [ ] sha256
         - [ ] sha1

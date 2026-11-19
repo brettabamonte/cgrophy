@@ -53,21 +53,24 @@ void hmac_init(CgrophyHmac *obj, u8 *key, size_t key_len, CgrophyHashFuncType ty
     obj->key_opad = (u8 *)malloc(sizeof(*obj->key) * block_size);
     obj->hash_function = h_func;
 
-    /* setup hash function for determining key */
-    k_digest = (u8 *)malloc(sizeof(*k_digest) * digest_size);
-    k0 = (u8 *)malloc(sizeof(*k0) * digest_size);
-
     if (key_len == block_size)
     {
         memcpy(obj->key, key, block_size);
     }
     else
     {
+        /* setup hash function for determining key */
+        k_digest = (u8 *)malloc(sizeof(*k_digest) * digest_size);
+        k0 = (u8 *)malloc(sizeof(*k0) * digest_size);
+
         if (key_len > block_size)
         {
             /* hash input key */
-            hash_function_update(h_func, key, key_len);
-            hash_function_final(h_func, k_digest);
+            CgrophyHashFunc *kdf = hash_function_factory(type);
+            hash_function_init(kdf);
+            hash_function_update(kdf, key, key_len);
+            hash_function_final(kdf, k_digest);
+            hash_function_destroy(kdf);
 
             /* create B-byte key */
             memcpy(k0, k_digest, digest_size); /* copy H(K) */
@@ -79,6 +82,8 @@ void hmac_init(CgrophyHmac *obj, u8 *key, size_t key_len, CgrophyHashFuncType ty
             memset(k0 + key_len, 0x00, block_size - key_len);
         }
         memcpy(obj->key, k0, block_size);
+        free(k_digest);
+        free(k0);
     }
 
     // Pre-compute k0 ^ ipad & k0 ^ opad
@@ -90,9 +95,6 @@ void hmac_init(CgrophyHmac *obj, u8 *key, size_t key_len, CgrophyHashFuncType ty
 
     /* start hashing */
     hash_function_update(obj->hash_function, obj->key_ipad, block_size);
-
-    free(k_digest);
-    free(k0);
 }
 
 void hmac_update(CgrophyHmac *obj, u8 *ptr, size_t len)
