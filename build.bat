@@ -37,10 +37,11 @@ goto Build
 
 :Build
 rem c4711 - function expanded inline by compiler. don't care.
-set "arguments=/Wall /wd4711 /wd4133 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\ /nologo"
+set "arguments=/Wall /wd4711 /wd4133 /Fo:%target%\ /Fe:%target%\ /Fd:%target%\ /nologo /Iinclude\"
 
 if "%tests%"=="true" (
     set "arguments=%arguments% /DSHA1_TEST /DSHA256_TEST /DHMAC_TEST"
+    set "test_files=tests\test_runner.c tests\sha256.c tests\sha1.c tests\hmac.c"
 )
 
 if "%conf%"=="release" (
@@ -50,18 +51,16 @@ if "%conf%"=="release" (
 )
 
 rem Finally build library
-rem cl %arguments% /c src\sha1.c
-rem lib /OUT:%target%\sha1.lib %target%\sha1.obj
-rem 
-rem cl %arguments% /c src\sha256.c
-rem lib /OUT:%target%\sha256.lib %target%\sha256.obj
-rem 
-rem cl %arguments% /c src\hmac.c
-rem lib /OUT:%target%\hmac.lib %target%\hmac.obj
+cl %arguments% /c src\sha1.c
+lib /OUT:%target%\sha1.lib %target%\sha1.obj
+
+cl %arguments% /c src\sha256.c
+lib /OUT:%target%\sha256.lib %target%\sha256.obj
+
+cl %arguments% /c src\hash.c src\hmac.c
+lib /OUT:%target%\hmac.lib %target%\hmac.obj %target%\hash.obj
 
 rem Build executable with entry-point that can run tests
 if "%tests%"=="true" (
-    rem cl %arguments% src\sha1.c
-    rem cl %arguments% src\sha256.c
-    cl %arguments% src\hmac.c src\hash.c /link /LIBPATH:%target% sha256.lib sha1.lib
+    cl %arguments% %test_files% /link /LIBPATH:%target% sha256.lib sha1.lib hmac.lib
 )

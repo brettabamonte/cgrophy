@@ -47,14 +47,4 @@ echo Tests finished compiling
 
 rem run tests
 pushd "%~dp0..\%target%"
-sha1.exe
-
-echo.
-echo.
-
-sha256.exe
-
-echo.
-echo.
-
-hmac.exe
+test_runner.exe
