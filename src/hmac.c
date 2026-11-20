@@ -61,7 +61,7 @@ void hmac_init(CgrophyHmac *obj, u8 *key, size_t key_len, CgrophyHashFuncType ty
     {
         /* setup hash function for determining key */
         k_digest = (u8 *)malloc(sizeof(*k_digest) * digest_size);
-        k0 = (u8 *)malloc(sizeof(*k0) * digest_size);
+        k0 = (u8 *)malloc(sizeof(*k0) * block_size);
 
         if (key_len > block_size)
         {
